@@ -4,7 +4,7 @@ import MDSplus as mds
 import os
 
 
-shot_list = np.arange(203015, 203028)
+shot_list = np.arange(206584, 206597)
 
 connection = mds.Connection('atlas.gat.com')
 
@@ -46,5 +46,5 @@ os.makedirs(output_dir, exist_ok=True)
 
 #save pickle
 import pickle
-with open(os.path.join(output_dir, 'cakenn_profiles_exp25.pkl'), 'wb') as f:
+with open(os.path.join(output_dir, 'cakenn_profiles_exp_mar26.pkl'), 'wb') as f:
     pickle.dump(all_shot_data, f)

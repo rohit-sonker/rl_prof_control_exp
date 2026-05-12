@@ -72,6 +72,17 @@ def parse_args():
         default=[0.0, 6000.0],
         help="Time limits for actuator plots.",
     )
+    parser.add_argument(
+        "--plot-start-time",
+        type=float,
+        default=1000,
+        metavar="MS",
+        help=(
+            "Start time (ms) for profile signal traces. "
+            "Defaults to the first value in target_set_times. "
+            "Must be <= target_set_times[0] for each shot."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -277,7 +288,7 @@ def build_target_trace(times, set_time_indices, targets, selected_target_indices
     return x_times, y_target
 
 
-def plot_profile_page(config, targets, times, profile_signals, profile_tau):
+def plot_profile_page(config, targets, times, profile_signals, profile_tau, plot_start_time=None):
     shot = config["shot"]
     prof_type = config["prof_type"]
     selected_target_indices = [idx - 1 for idx in config["targets_indxs"]]
@@ -285,22 +296,28 @@ def plot_profile_page(config, targets, times, profile_signals, profile_tau):
     radial_indices = config["radial_indices"]
     set_time_indices = [int(np.argmin(np.abs(times - t))) for t in target_set_times]
 
+    if plot_start_time is not None:
+        plot_start_idx = int(np.argmin(np.abs(times - plot_start_time)))
+    else:
+        plot_start_idx = set_time_indices[0]
+
     fig, axes = plt.subplots(3, 3, figsize=(14, 10), sharex=False, sharey=False)
     axes = axes.ravel()
 
     for i, radial_index in enumerate(radial_indices):
         ax = axes[i]
-        x_times, target_trace = build_target_trace(
+        x_times_target, target_trace = build_target_trace(
             times=times,
             set_time_indices=set_time_indices,
             targets=targets,
             selected_target_indices=selected_target_indices,
             radial_index=radial_index,
         )
-        signal_trace = profile_signals[set_time_indices[0]:set_time_indices[-1], radial_index]
+        x_times_signal = times[plot_start_idx:set_time_indices[-1]]
+        signal_trace = profile_signals[plot_start_idx:set_time_indices[-1], radial_index]
 
-        ax.plot(x_times, signal_trace, label="signal")
-        ax.plot(x_times, target_trace, linestyle="--", color="r", label="target")
+        ax.plot(x_times_signal, signal_trace, label="signal")
+        ax.plot(x_times_target, target_trace, linestyle="--", color="r", label="target")
         for set_time in target_set_times:
             ax.axvline(set_time, color="0.8", linewidth=0.8)
         ax.set_title(f"rad idx {radial_index}", fontsize=10)
@@ -348,7 +365,7 @@ def plot_actuator_page(config, act_data, actuator_tau, xlim):
     return fig
 
 
-def render_report(shots, targets_by_type, output_path, profile_tau, actuator_tau, xlim):
+def render_report(shots, targets_by_type, output_path, profile_tau, actuator_tau, xlim, plot_start_time=None):
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -365,6 +382,7 @@ def render_report(shots, targets_by_type, output_path, profile_tau, actuator_tau
                 times=times,
                 profile_signals=profile_signals,
                 profile_tau=profile_tau,
+                plot_start_time=plot_start_time,
             )
             pdf.savefig(profile_fig)
             plt.close(profile_fig)
@@ -391,6 +409,7 @@ def main():
         profile_tau=args.profile_tau,
         actuator_tau=args.actuator_tau,
         xlim=tuple(args.xlim),
+        plot_start_time=args.plot_start_time,
     )
     print(f"Saved report to {args.output}")
 
